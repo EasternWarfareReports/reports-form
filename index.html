@@ -184,6 +184,76 @@
       position: relative;
       z-index: 1;
     }
+    /* ──── Red + Black RGB Glowing Orbs ──── */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.4;
+  animation: floatOrb 22s infinite ease-in-out, pulseOrb 7s infinite alternate;
+}
+
+.orb-red {
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle at 35% 45%, #ff1a1a 10%, transparent 70%);
+  box-shadow: 0 0 140px #ff1a1a, inset 0 0 70px #660000;
+  top: 12%;
+  left: 5%;
+  animation-delay: 0s;
+}
+
+.orb-dark {
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle at 60% 65%, #330000 15%, transparent 65%);
+  box-shadow: 0 0 120px #330000, inset 0 0 60px #000000;
+  bottom: 18%;
+  right: 10%;
+  animation-delay: 5s;
+}
+
+.orb-glow {
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle at 50% 30%, #990000 5%, transparent 75%);
+  box-shadow: 0 0 160px #990000, inset 0 0 80px #330000;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  animation-delay: 11s;
+}
+
+@keyframes floatOrb {
+  0%, 100% { transform: translate(0, 0); }
+  25%  { transform: translate(60px, -40px); }
+  50%  { transform: translate(-30px, 70px); }
+  75%  { transform: translate(-80px, -30px); }
+}
+
+@keyframes pulseOrb {
+  0%   { opacity: 0.28; transform: scale(0.92); }
+  100% { opacity: 0.55; transform: scale(1.18); }
+}
+
+/* Attach orbs to the reports tab background layer */
+#view {
+  overflow: hidden;
+  position: relative;
+}
+
+#view::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+#view::after::before  { content: ""; @extend .orb; @extend .orb-red; }
+#view::after::after   { content: ""; @extend .orb; @extend .orb-dark; }
+#view::after::before::before { content: ""; @extend .orb; @extend .orb-glow; }
   </style>
 </head>
 <body>
