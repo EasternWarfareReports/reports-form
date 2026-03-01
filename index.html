@@ -16,7 +16,8 @@
     button { background: #10b981; color: white; border: none; padding: 14px 30px; border-radius: 6px; font-size: 17px; cursor: pointer; margin-top: 25px; }
     button:hover { background: #059669; }
     #status { margin-top: 20px; font-weight: bold; text-align: center; }
-    .view-link { text-align: center; margin-top: 40px; font-size: 18px; }
+    .view-btn { display: block; width: 100%; text-align: center; background: #0070f3; color: white; padding: 18px; border-radius: 8px; font-size: 18px; text-decoration: none; margin-top: 30px; }
+    .view-btn:hover { background: #005bb5; }
   </style>
 </head>
 <body>
@@ -50,18 +51,14 @@
     </form>
     <div id="status"></div>
 
-    <div class="view-link">
-      <a href="reports.html" style="color:#0070f3; text-decoration:none;">→ View All Reports</a>
-    </div>
+    <a href="reports.html" class="view-btn">📋 View All Reports</a>
   </div>
 
   <script>
-    // Single, clean Supabase init
     const supabaseUrl = 'https://ugijazxbscpiwavmkjbr.supabase.co';
     const supabaseKey = 'sb_publishable_tUlhOkObHpTpwlh-9R7x0Q_1kd_q6qe';
     const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Form submit handler
     document.getElementById('reportForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const status = document.getElementById('status');
@@ -97,7 +94,7 @@
         if (error) throw error;
 
         status.style.color = 'green';
-        status.textContent = '✅ Report submitted!';
+        status.textContent = '✅ Report submitted successfully!';
         document.getElementById('reportForm').reset();
       } catch (err) {
         status.style.color = 'red';
