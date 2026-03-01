@@ -3,154 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reporting System</title>
+  <title>Submit Report</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7fa; color: #333; }
-    header { background: #0070f3; color: white; padding: 20px; text-align: center; }
-    nav { display: flex; background: #005bb5; }
-    nav a { flex: 1; color: white; text-align: center; padding: 14px; text-decoration: none; font-weight: bold; }
-    nav a.active { background: #0070f3; }
-    nav a:hover { background: #0060d0; }
-    .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
-    form { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-    label { display: block; margin: 18px 0 6px; font-weight: 600; }
-    input, textarea { width: 100%; padding: 11px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-    textarea { min-height: 100px; }
-    button { background: #10b981; color: white; border: none; padding: 14px 28px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 20px; }
+    header { background: #0070f3; color: white; padding: 25px; text-align: center; }
+    .container { max-width: 700px; margin: 40px auto; padding: 0 20px; }
+    form { background: white; padding: 35px; border-radius: 12px; box-shadow: 0 6px 25px rgba(0,0,0,0.1); }
+    label { display: block; margin: 20px 0 8px; font-weight: 600; }
+    input, textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+    textarea { min-height: 120px; }
+    button { background: #10b981; color: white; border: none; padding: 14px 30px; border-radius: 6px; font-size: 17px; cursor: pointer; margin-top: 25px; }
     button:hover { background: #059669; }
-    #status { margin-top: 16px; font-weight: bold; text-align: center; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .report-item { background: white; padding: 16px; margin: 12px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); line-height: 1.5; }
-    #searchBox { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 6px; }
+    #status { margin-top: 20px; font-weight: bold; text-align: center; }
+    .view-link { text-align: center; margin-top: 30px; font-size: 18px; }
   </style>
 </head>
 <body>
 
-  <header><h1>Reporting System</h1></header>
-
-  <nav>
-    <a href="#submit" class="active" onclick="showTab('submit')">Submit Report</a>
-    <a href="#view" onclick="showTab('view')">View All Reports</a>
-  </nav>
+  <header><h1>Submit a New Report</h1></header>
 
   <div class="container">
+    <form id="reportForm">
+      <label>Reported User Name</label>
+      <input id="reported_user" placeholder="Username or ID" required>
 
-    <div id="submit" class="tab-content active">
-      <form id="reportForm">
-        <label>Reported User Name</label>
-        <input id="reported_user" placeholder="Username or ID" required>
+      <label>Reason for Report</label>
+      <textarea id="reason" placeholder="Describe what happened..." required></textarea>
 
-        <label>Reason for Report</label>
-        <textarea id="reason" placeholder="Describe the incident..." required></textarea>
+      <label>Proposed Punishment</label>
+      <input id="punishment" placeholder="e.g. Warning, 7-day ban, Permanent ban">
 
-        <label>Proposed Punishment</label>
-        <input id="punishment" placeholder="e.g. Warning / Ban / Mute">
+      <label>Moderator Who Took Action</label>
+      <input id="moderator" placeholder="Your username" required>
 
-        <label>Moderator Who Took Action</label>
-        <input id="moderator" placeholder="Your username" required>
+      <label>Additional Link (proof)</label>
+      <input id="link" placeholder="https://" type="url">
 
-        <label>Additional Link</label>
-        <input id="link" placeholder="https://" type="url">
+      <label>Image Proof (optional)</label>
+      <input type="file" id="image" accept="image/*">
 
-        <label>Image Proof (optional)</label>
-        <input type="file" id="image" accept="image/*">
+      <label>Video Proof (optional)</label>
+      <input type="file" id="video" accept="video/*">
 
-        <label>Video Proof (optional)</label>
-        <input type="file" id="video" accept="video/*">
+      <button type="submit">Submit Report</button>
+    </form>
+    <div id="status"></div>
 
-        <button type="submit">Submit Report</button>
-      </form>
-      <div id="status"></div>
+    <div class="view-link">
+      <a href="reports.html" style="color:#0070f3; text-decoration:none;">→ View All Reports</a>
     </div>
-
-    <div id="view" class="tab-content">
-      <input type="text" id="searchBox" placeholder="Search reports (user, reason, moderator...)">
-      <div id="reports-list">Loading reports...</div>
-    </div>
-
   </div>
 
   <script>
-    // Single Supabase declaration – no duplicates
     const supabaseUrl = 'https://ugijazxbscpiwavmkjbr.supabase.co';
     const supabaseKey = 'sb_publishable_tUlhOkObHpTpwlh-9R7x0Q_1kd_q6qe';
     const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
 
-    let allReports = [];
-
-    function showTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-      document.querySelector(`nav a[href="#${tabId}"]`).classList.add('active');
-      if (tabId === 'view') loadReports();
-    }
-
-    async function loadReports() {
-      const list = document.getElementById('reports-list');
-      list.innerHTML = 'Loading reports...';
-
-      const { data, error } = await supabase
-        .from('reports')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        list.innerHTML = 'Error: ' + error.message;
-        return;
-      }
-
-      allReports = data || [];
-      renderReports(allReports);
-    }
-
-    function renderReports(reports) {
-      const list = document.getElementById('reports-list');
-      list.innerHTML = '';
-
-      if (reports.length === 0) {
-        list.innerHTML = '<p style="text-align:center; color:#666;">No reports found.</p>';
-        return;
-      }
-
-      reports.forEach(r => {
-        const div = document.createElement('div');
-        div.className = 'report-item';
-        div.innerHTML = `
-          <strong>Reported:</strong> ${r.reported_user || '—'}<br>
-          <strong>Reason:</strong> ${r.reason || '—'}<br>
-          <strong>Punishment:</strong> ${r.punishment || 'None'}<br>
-          <strong>Moderator:</strong> ${r.moderator || '—'}<br>
-          <strong>Submitted:</strong> ${new Date(r.created_at).toLocaleString()}<br>
-        `;
-        if (r.link) div.innerHTML += `<strong>Link:</strong> <a href="${r.link}" target="_blank">${r.link}</a><br>`;
-        if (r.image_url) div.innerHTML += `<img src="${r.image_url}" style="max-width:100%; margin-top:10px; border-radius:6px;" alt="image"><br>`;
-        if (r.video_url) div.innerHTML += `<video src="${r.video_url}" controls style="max-width:100%; margin-top:10px; border-radius:6px;"></video><br>`;
-        list.appendChild(div);
-      });
-    }
-
-    // Search filter
-    document.getElementById('searchBox').addEventListener('input', function() {
-      const term = this.value.toLowerCase().trim();
-      const filtered = allReports.filter(r =>
-        (r.reported_user || '').toLowerCase().includes(term) ||
-        (r.reason || '').toLowerCase().includes(term) ||
-        (r.punishment || '').toLowerCase().includes(term) ||
-        (r.moderator || '').toLowerCase().includes(term) ||
-        (r.link || '').toLowerCase().includes(term)
-      );
-      renderReports(filtered);
-    });
-
-    // Form submit
     document.getElementById('reportForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const status = document.getElementById('status');
       status.textContent = 'Submitting...';
-      status.style.color = 'black';
 
       const reported_user = document.getElementById('reported_user').value.trim() || null;
       const reason = document.getElementById('reason').value.trim();
@@ -181,14 +94,11 @@
         if (error) throw error;
 
         status.style.color = 'green';
-        status.textContent = 'Report submitted successfully!';
+        status.textContent = '✅ Report submitted successfully!';
         document.getElementById('reportForm').reset();
-
-        // Refresh view if already on that tab
-        if (document.getElementById('view').classList.contains('active')) loadReports();
       } catch (err) {
         status.style.color = 'red';
-        status.textContent = 'Error: ' + err.message;
+        status.textContent = '❌ Error: ' + err.message;
       }
     });
   </script>
