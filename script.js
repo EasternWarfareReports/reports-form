@@ -1,4 +1,4 @@
-// script.js – SINGLE supabase client declaration – no duplicates allowed
+// script.js – CLEAN VERSION – ONLY ONE supabase declaration
 
 const supabase = Supabase.createClient(
   'https://tnsjtjstvpzrgznbzjdc.supabase.co',
@@ -7,7 +7,6 @@ const supabase = Supabase.createClient(
 
 let reports = [];
 
-// Load reports
 async function loadReports() {
   const { data, error } = await supabase
     .from('reports')
@@ -16,8 +15,7 @@ async function loadReports() {
 
   if (error) {
     console.error('Load error:', error.message);
-    document.getElementById('reportsList').innerHTML = 
-      '<p class="text-center text-red-600 py-12">Error loading reports: ' + (error.message || 'Check connection') + '</p>';
+    document.getElementById('reportsList').innerHTML = '<p class="text-center text-red-600 py-12">Error loading reports</p>';
     return;
   }
 
@@ -25,7 +23,6 @@ async function loadReports() {
   renderReports();
 }
 
-// Render reports
 function renderReports(filter = '') {
   const container = document.getElementById('reportsList');
   const lowerFilter = filter.toLowerCase();
@@ -38,7 +35,7 @@ function renderReports(filter = '') {
   );
 
   container.innerHTML = filtered.length === 0 
-    ? `<p class="text-center text-gray-500 py-12">No reports${filter ? ` matching "${filter}"` : ''}</p>`
+    ? `<p class="text-center text-gray-500 py-12">No reports found</p>`
     : filtered.map(r => {
         const date = new Date(r.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
         return `
@@ -57,8 +54,8 @@ function renderReports(filter = '') {
                 <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
                   ${r.evidence.map((url, i) => `
                     <div class="cursor-pointer rounded-xl overflow-hidden border hover:border-blue-400 transition"
-                         onclick="openPreview('${url}', ${/\.(jpg|jpeg|png|gif|webp)$/i.test(url)}, ${/\.(mp4|webm|mov)$/i.test(url)}, ${i})">
-                      ${/\.(jpg|jpeg|png|gif|webp)$/i.test(url) ? 
+                         onclick="openPreview('${url}', $$   {/\.(jpg|jpeg|png|gif|webp)   $$/i.test(url)}, $$   {/\.(mp4|webm|mov)   $$/i.test(url)}, ${i})">
+                      $$   {/\.(jpg|jpeg|png|gif|webp)   $$/i.test(url) ? 
                         `<img src="${url}" alt="Evidence" class="w-full h-24 object-cover">` :
                         /\.(mp4|webm|mov)$/i.test(url) ? 
                         `<video src="${url}" class="w-full h-24 object-cover" muted loop autoplay></video>` :
@@ -75,7 +72,6 @@ function renderReports(filter = '') {
       }).join('');
 }
 
-// Preview modal
 function openPreview(url, isImage, isVideo) {
   const modal = document.getElementById('previewModal');
   const content = document.getElementById('modalContent');
@@ -95,7 +91,6 @@ document.getElementById('previewModal')?.addEventListener('click', e => {
   if (e.target.id === 'previewModal') document.getElementById('previewModal').style.display = 'none';
 });
 
-// Submit form
 document.getElementById('reportForm').addEventListener('submit', async function(e) {
   e.preventDefault();
 
@@ -155,21 +150,18 @@ document.getElementById('reportForm').addEventListener('submit', async function(
   }, 1500);
 });
 
-// Delete
 window.deleteReport = async function(id) {
   if (!confirm('Delete?')) return;
   await supabase.from('reports').delete().eq('id', id);
   loadReports();
 };
 
-// Clear all
 window.clearAllReports = async function() {
   if (!confirm('Clear all?')) return;
   await supabase.from('reports').delete().neq('id', '0');
   loadReports();
 };
 
-// Tabs
 function showSubmit() {
   document.getElementById('submitSection').classList.remove('hidden');
   document.getElementById('viewSection').classList.add('hidden');
@@ -188,7 +180,6 @@ function showView() {
   renderReports(document.getElementById('searchInput').value);
 }
 
-// File preview
 document.getElementById('evidence').addEventListener('change', function() {
   const container = document.getElementById('previewContainer');
   container.innerHTML = '';
@@ -214,12 +205,10 @@ document.getElementById('evidence').addEventListener('change', function() {
   });
 });
 
-// Search
 document.getElementById('searchInput').addEventListener('input', e => renderReports(e.target.value));
 
-// Init
 window.onload = () => {
-  console.log('Page loaded – connecting...');
+  console.log('Page loaded – connecting to Supabase');
   loadReports();
   showSubmit();
   supabase.channel('reports')
