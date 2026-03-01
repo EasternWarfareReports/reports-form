@@ -35,7 +35,7 @@
   </div>
 
   <script>
-    // ONLY ONE Supabase client using createClient syntax
+    // ONLY ONE Supabase client – using createClient syntax as requested
     const supabaseUrl = 'https://ugijazxbscpiwavmkjbr.supabase.co';
     const supabaseKey = 'sb_publishable_tUlhOkObHpTpwlh-9R7x0Q_1kd_q6qe';
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -59,8 +59,7 @@
         allReports = data || [];
         renderReports(allReports);
       } catch (err) {
-        console.error('Supabase error:', err);
-        errorDiv.innerHTML = `Failed to load reports: ${err.message || 'Unknown error'}<br><br>Possible cause: RLS policy missing for SELECT (run the SQL policy in Supabase).`;
+        errorDiv.innerHTML = `Failed to load reports: ${err.message || 'Unknown error'}<br><br>Check Supabase RLS policies.`;
         list.innerHTML = '';
       }
     }
