@@ -10,16 +10,9 @@
     header { background: #0070f3; color: white; padding: 25px; text-align: center; }
     .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
     #searchBox { width: 100%; padding: 14px; font-size: 17px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 25px; }
-    .report-item {
-      background: white;
-      padding: 18px;
-      margin: 15px 0;
-      border-radius: 10px;
-      box-shadow: 0 3px 15px rgba(0,0,0,0.07);
-      line-height: 1.6;
-    }
-    .back-link { text-align: center; margin: 40px 0; font-size: 18px; }
-    .refresh-btn { background: #0070f3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+    .report-item { background: white; padding: 18px; margin: 15px 0; border-radius: 10px; box-shadow: 0 3px 15px rgba(0,0,0,0.07); line-height: 1.6; }
+    .back-link, .refresh-area { text-align: center; margin: 30px 0; font-size: 18px; }
+    #error-msg { color: red; text-align: center; padding: 20px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -29,9 +22,12 @@
   <div class="container">
     <input type="text" id="searchBox" placeholder="🔍 Search reports...">
 
-    <button class="refresh-btn" onclick="loadReports()">Refresh List</button>
+    <div class="refresh-area">
+      <button onclick="loadReports()" style="padding:10px 20px; background:#0070f3; color:white; border:none; border-radius:6px; cursor:pointer;">Refresh List</button>
+    </div>
 
     <div id="reports-list">Loading all reports...</div>
+    <div id="error-msg"></div>
 
     <div class="back-link">
       <a href="index.html" style="color:#0070f3; text-decoration:none;">← Back to Submit Report</a>
@@ -39,6 +35,7 @@
   </div>
 
   <script>
+    // SINGLE Supabase init – no duplicates
     const supabaseUrl = 'https://ugijazxbscpiwavmkjbr.supabase.co';
     const supabaseKey = 'sb_publishable_tUlhOkObHpTpwlh-9R7x0Q_1kd_q6qe';
     const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
@@ -47,7 +44,9 @@
 
     async function loadReports() {
       const list = document.getElementById('reports-list');
+      const errorDiv = document.getElementById('error-msg');
       list.innerHTML = 'Loading all reports...';
+      errorDiv.innerHTML = '';
 
       try {
         const { data, error } = await supabase
@@ -60,7 +59,9 @@
         allReports = data || [];
         renderReports(allReports);
       } catch (err) {
-        list.innerHTML = `<p style="color:red; text-align:center;">Error loading reports: ${err.message}<br><br>Make sure you ran the SQL policy in Supabase.</p>`;
+        console.error('Supabase fetch error:', err);
+        errorDiv.innerHTML = `Error loading reports: ${err.message || 'Unknown error'}<br><br>Code: ${err.code || 'N/A'}<br>Check Supabase RLS policies or browser console.`;
+        list.innerHTML = '';
       }
     }
 
@@ -69,7 +70,7 @@
       list.innerHTML = '';
 
       if (reports.length === 0) {
-        list.innerHTML = '<p style="text-align:center; color:#666; padding:40px;">No reports found yet.</p>';
+        list.innerHTML = '<p style="text-align:center; color:#666; padding:40px;">No reports found yet. Submit one!</p>';
         return;
       }
 
@@ -90,7 +91,6 @@
       });
     }
 
-    // Live search
     document.getElementById('searchBox').addEventListener('input', function() {
       const term = this.value.toLowerCase().trim();
       const filtered = allReports.filter(r =>
@@ -103,7 +103,7 @@
       renderReports(filtered);
     });
 
-    // Load on page open
+    // Load immediately
     loadReports();
   </script>
 </body>
