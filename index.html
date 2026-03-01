@@ -58,13 +58,13 @@
 
   <script>
     // ────────────────────────────────────────────────
-    // ONLY ONE Supabase declaration – this is the fix
+    // ONLY ONE Supabase client – this is the only place it is declared
     // ────────────────────────────────────────────────
     const supabaseUrl = 'https://ugijazxbscpiwavmkjbr.supabase.co';
     const supabaseKey = 'sb_publishable_tUlhOkObHpTpwlh-9R7x0Q_1kd_q6qe';
     const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Submit handler (your exact logic, no duplicates)
+    // Submit handler (no duplicates)
     document.getElementById('reportForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const status = document.getElementById('status');
