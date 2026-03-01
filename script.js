@@ -1,3 +1,5 @@
+// script.js - CLEAN FINAL VERSION - ONLY ONE supabase
+
 const supabase = Supabase.createClient(
   'https://tnsjtjstvpzrgznbzjdc.supabase.co',
   'sb_publishable_c3HyWRydGbYHE9VkP_zRrQ_Ivi9U5fZ'
