@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EW Mod Panel</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -173,63 +175,101 @@
       cursor: pointer;
       z-index: 10000;
     }
-    #admin-panel {
+
+    /* Background image only on reports tab */
+    #view {
+      position: relative;
+      min-height: 100vh;
+    }
+    #view::before {
+      content: "";
       position: fixed;
-      top: 80px;
-      right: 20px;
+      inset: 0;
+      background-image: url('https://cdn.discordapp.com/attachments/1461528008950157505/1477723479859134588/thumbnail_1.png?ex=69a5ccbc&is=69a47b3c&hm=792ee17eb023081981388110e5349a495896ea979f6671021c927db932595641&');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      opacity: 0.22;
+      z-index: -2;
+    }
+    #view::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 17, 23, 0.65);
+      z-index: -1;
+    }
+    #view .container,
+    #view #search-container,
+    #view #reports-list,
+    #view #no-results {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* RGB Glowing Orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.4;
+      animation: floatOrb 22s infinite ease-in-out, pulseOrb 7s infinite alternate;
+    }
+    #view::after::before,
+    #view::after::after,
+    #view::after::before::before {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.4;
+      animation: floatOrb 22s infinite ease-in-out, pulseOrb 7s infinite alternate;
+    }
+    #view::after::before {
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle at 35% 45%, #ff1a1a 10%, transparent 70%);
+      box-shadow: 0 0 140px #ff1a1a, inset 0 0 70px #660000;
+      top: 12%;
+      left: 5%;
+      animation-delay: 0s;
+    }
+    #view::after::after {
       width: 320px;
-      background: rgba(22, 27, 34, 0.95);
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 6px 30px rgba(0,0,0,0.6);
-      display: none;
-      z-index: 1000;
-      color: white;
-      overflow-y: auto;
-      max-height: 70vh;
+      height: 320px;
+      background: radial-gradient(circle at 60% 65%, #330000 15%, transparent 65%);
+      box-shadow: 0 0 120px #330000, inset 0 0 60px #000000;
+      bottom: 18%;
+      right: 10%;
+      animation-delay: 5s;
     }
-    #admin-panel h3 {
-      margin: 0 0 15px 0;
-      text-align: center;
+    #view::after::before::before {
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle at 50% 30%, #990000 5%, transparent 75%);
+      box-shadow: 0 0 160px #990000, inset 0 0 80px #330000;
+      top: 40%;
+      left: 50%;
+      transform: translateX(-50%);
+      animation-delay: 11s;
     }
-    #newDiscordId {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 10px;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      color: white;
-      border-radius: 6px;
+    @keyframes floatOrb {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(60px, -40px); }
+      50% { transform: translate(-30px, 70px); }
+      75% { transform: translate(-80px, -30px); }
     }
-    #admin-panel button {
-      width: 100%;
-      background: #238636;
-      color: white;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
-    .id-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid #30363d;
-    }
-    .id-item button {
-      background: #da3633;
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
+    @keyframes pulseOrb {
+      0% { opacity: 0.28; transform: scale(0.92); }
+      100% { opacity: 0.55; transform: scale(1.18); }
     }
   </style>
 </head>
 <body>
+
   <!-- Login screen -->
   <div id="login-screen">
     <h2>EW Mod Panel</h2>
@@ -237,24 +277,16 @@
     <button onclick="signInWithDiscord()">Sign in with Discord</button>
   </div>
 
-  <!-- Access denied screen -->
+  <!-- Access denied screen (wrong ID) -->
   <div id="denied-screen" style="display:none;">
     <h2>Access Denied</h2>
-    <p>Your Discord account is not authorized.</p>
-    <button onclick="logout()">Logout & Try Again</button>
+    <p>Your Discord account is not authorized for this panel.</p>
+    <button onclick="sb.auth.signOut().then(() => location.reload())">Logout & Try Again</button>
   </div>
 
-  <!-- Main content -->
+  <!-- Main content (hidden until authorized) -->
   <div id="main-content" style="display:none;">
-    <button id="logout-btn" onclick="logout()">Logout</button>
-
-    <!-- Admin panel -->
-    <div id="admin-panel">
-      <h3>Manage Allowed Discord IDs</h3>
-      <input type="text" id="newDiscordId" placeholder="Discord ID (e.g. 1163584865170632816)">
-      <button onclick="addDiscordId()">Add ID</button>
-      <div id="allowed-list"></div>
-    </div>
+    <button id="logout-btn" onclick="sb.auth.signOut().then(() => location.reload())">Logout</button>
 
     <header>
       <h1>EW Mod Panel</h1>
@@ -266,27 +298,38 @@
     </nav>
 
     <div class="container">
+
+      <!-- Submit tab -->
       <div id="submit" class="tab-content active">
         <form id="reportForm">
           <label>Reported User Name</label>
           <input id="reported_user" placeholder="Username or ID" required>
+
           <label>Reason for Report</label>
           <textarea id="reason" placeholder="Describe the incident in detail..." required></textarea>
+
           <label>Proposed Punishment</label>
           <input id="punishment" placeholder="e.g. Warning / 3-day mute / Permanent ban">
+
           <label>Moderator Who Took Action</label>
           <input id="moderator" placeholder="Your username / Moderator name" required>
+
           <label>Additional Link (proof, screenshot, clip...)</label>
           <input id="link" placeholder="https://" type="url">
+
           <label>Image Proof (optional)</label>
           <input type="file" id="image" accept="image/*">
+
           <label>Video Proof (optional)</label>
           <input type="file" id="video" accept="video/*">
+
           <button type="submit">Submit Report</button>
         </form>
+
         <div id="status"></div>
       </div>
 
+      <!-- View reports tab -->
       <div id="view" class="tab-content">
         <div id="search-container">
           <input type="text" id="searchInput" placeholder="Search reports...">
@@ -294,113 +337,165 @@
         <div id="reports-list">Loading reports...</div>
         <div id="no-results">No matching reports found.</div>
       </div>
+
     </div>
   </div>
 
   <script>
-    const API_BASE = 'https://ugijazxbscpiwavmkjbr.supabase.co/functions/v1/reports-api';
+    const supabaseUrl = 'https://ugijazxbscpiwavmkjbr.supabase.co';
+    const supabaseKey = 'sb_publishable_tUlhOkObHpTpwlh-9R7x0Q_1kd_q6qe';
+    const { createClient } = window.supabase;
+    const sb = createClient(supabaseUrl, supabaseKey);
 
-    async function signInWithDiscord() {
-      // This uses Supabase client only for auth (anon key is safe/public)
-      const { supabase } = window;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'discord',
-        options: { redirectTo: window.location.href }
-      });
-      if (error) alert('Login error: ' + error.message);
-    }
+    let ALLOWED_USER_IDS = [];
 
-    async function logout() {
-      const { supabase } = window;
-      await supabase.auth.signOut();
-      location.reload();
-    }
-
-    // Check if user is authorized after login (via Edge Function)
+    // Load allowed IDs from separate JSON file
     (async () => {
-      const response = await fetch(API_BASE + '/check-access', { credentials: 'include' });
-      const { authorized, isAdmin } = await response.json();
+      try {
+        const response = await fetch('allowed-users.json');
+        if (!response.ok) throw new Error('Failed to load JSON');
+        const data = await response.json();
+        ALLOWED_USER_IDS = data.allowed || [];
+        console.log('Loaded allowed user IDs:', ALLOWED_USER_IDS);
+      } catch (err) {
+        console.error('Failed to load allowed-users.json:', err);
+        // Fallback: only your ID
+        ALLOWED_USER_IDS = ['43940f16-1cf6-4790-80fd-711c563362a2'];
+      }
 
-      if (!authorized) {
+      // Now check login and authorization
+      const { data: { session } } = await sb.auth.getSession();
+
+      if (!session) {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('main-content').style.display = 'none';
+        document.getElementById('denied-screen').style.display = 'none';
+        return;
+      }
+
+      const userId = session.user.id;
+
+      if (!ALLOWED_USER_IDS.includes(userId)) {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-content').style.display = 'none';
         document.getElementById('denied-screen').style.display = 'flex';
         return;
       }
 
+      // Authorized → show main content
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('denied-screen').style.display = 'none';
       document.getElementById('main-content').style.display = 'block';
 
-      if (isAdmin) {
-        document.getElementById('admin-panel').style.display = 'block';
-        loadAllowedIds();
-      }
+      console.log('Authorized access for user ID:', userId);
     })();
 
+    // Discord login function
+    async function signInWithDiscord() {
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'discord',
+        options: {
+          redirectTo: window.location.href  // returns to current page
+        }
+      });
+      if (error) alert('Login error: ' + error.message);
+    }
+
+    // Tab switching
     function showTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
       document.getElementById(tabId).classList.add('active');
+
       document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
       document.querySelector(`nav a[href="#${tabId}"]`)?.classList.add('active');
+
       if (tabId === 'view') loadReports();
     }
 
     async function loadReports() {
       const list = document.getElementById('reports-list');
+      const noResults = document.getElementById('no-results');
       list.innerHTML = 'Loading reports...';
+      noResults.style.display = 'none';
 
-      try {
-        const res = await fetch(API_BASE + '/reports');
-        if (!res.ok) throw new Error(await res.text());
-        const reports = await res.json();
+      const { data, error } = await sb
+        .from('reports')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (reports.length === 0) {
-          list.innerHTML = '<p style="text-align:center; color:#8b949e;">No reports yet.</p>';
-          return;
-        }
-
-        list.innerHTML = '';
-        reports.forEach(r => {
-          const item = document.createElement('div');
-          item.className = 'report-item';
-          item.innerHTML = `
-            <strong>Reported user:</strong> ${r.reported_user || '—'}<br>
-            <strong>Reason:</strong> ${r.reason || '—'}<br>
-            <strong>Punishment:</strong> ${r.punishment || 'None'}<br>
-            <strong>Moderator:</strong> ${r.moderator || '—'}<br>
-            <strong>Submitted:</strong> ${new Date(r.created_at).toLocaleString()}<br>
-          `;
-          if (r.link) item.innerHTML += `<a href="${r.link}" target="_blank">Proof link</a><br>`;
-          if (r.image_url) item.innerHTML += `<img src="${r.image_url}" style="max-width:100%; margin-top:10px;" alt="image"><br>`;
-          if (r.video_url) item.innerHTML += `<video src="${r.video_url}" controls style="max-width:100%; margin-top:10px;"></video><br>`;
-
-          // Delete button for admins only (client-side check)
-          if (r.isAdmin) {
-            const delBtn = document.createElement('button');
-            delBtn.className = 'delete-btn';
-            delBtn.textContent = 'Delete';
-            delBtn.onclick = () => deleteReport(r.id, item);
-            item.appendChild(delBtn);
-          }
-
-          list.appendChild(item);
-        });
-      } catch (err) {
-        list.innerHTML = `<p style="color:#f85149; text-align:center;">Error: ${err.message}</p>`;
+      if (error) {
+        list.innerHTML = `<p style="color:#f85149; text-align:center;">Error: ${error.message}</p>`;
+        return;
       }
+
+      allReports = data || [];
+
+      if (allReports.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color:#8b949e;">No reports yet.</p>';
+        return;
+      }
+
+      renderReports(allReports);
     }
+
+    function renderReports(reports) {
+      const list = document.getElementById('reports-list');
+      const noResults = document.getElementById('no-results');
+      list.innerHTML = '';
+
+      if (reports.length === 0) {
+        noResults.style.display = 'block';
+        return;
+      }
+
+      noResults.style.display = 'none';
+
+      reports.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'report-item';
+        item.innerHTML = `
+          <strong>Reported user:</strong> ${r.reported_user || '—'}<br>
+          <strong>Reason:</strong> ${r.reason || '—'}<br>
+          <strong>Punishment:</strong> ${r.punishment || 'None'}<br>
+          <strong>Moderator:</strong> ${r.moderator || '—'}<br>
+          <strong>Submitted:</strong> ${new Date(r.created_at).toLocaleString()}<br>
+        `;
+        if (r.link) item.innerHTML += `<a href="${r.link}" target="_blank">Proof link</a><br>`;
+        if (r.image_url) item.innerHTML += `<img src="${r.image_url}" style="max-width:100%; margin-top:10px;" alt="image"><br>`;
+        if (r.video_url) item.innerHTML += `<video src="${r.video_url}" controls style="max-width:100%; margin-top:10px;"></video><br>`;
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'delete-btn';
+        delBtn.textContent = 'Delete';
+        delBtn.onclick = () => deleteReport(r.id, item);
+        item.appendChild(delBtn);
+
+        list.appendChild(item);
+      });
+    }
+
+    document.getElementById('searchInput')?.addEventListener('input', e => {
+      const term = e.target.value.toLowerCase().trim();
+      if (!term) return renderReports(allReports);
+
+      const filtered = allReports.filter(r =>
+        [r.reported_user, r.reason, r.punishment, r.moderator, r.link]
+          .some(v => v?.toLowerCase().includes(term))
+      );
+
+      renderReports(filtered);
+    });
 
     async function deleteReport(id, element) {
       if (!confirm("Delete permanently?")) return;
+
       try {
-        const res = await fetch(API_BASE + '/delete-report', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id })
-        });
-        if (!res.ok) throw new Error(await res.text());
+        const { error } = await sb.from('reports').delete().eq('id', id);
+        if (error) throw error;
+
         element.remove();
+        allReports = allReports.filter(r => r.id !== id);
+        renderReports(allReports);
       } catch (err) {
         alert("Delete failed: " + err.message);
       }
@@ -408,112 +503,55 @@
 
     document.getElementById('reportForm')?.addEventListener('submit', async e => {
       e.preventDefault();
+
       const status = document.getElementById('status');
       status.textContent = 'Submitting...';
       status.style.color = 'white';
 
-      const formData = new FormData();
-      formData.append('reported_user', document.getElementById('reported_user').value.trim() || '');
-      formData.append('reason', document.getElementById('reason').value.trim());
-      formData.append('punishment', document.getElementById('punishment').value.trim() || '');
-      formData.append('moderator', document.getElementById('moderator').value.trim() || '');
-      formData.append('link', document.getElementById('link').value.trim() || '');
-      if (document.getElementById('image').files[0]) formData.append('image', document.getElementById('image').files[0]);
-      if (document.getElementById('video').files[0]) formData.append('video', document.getElementById('video').files[0]);
+      const formData = {
+        reported_user: document.getElementById('reported_user').value.trim() || null,
+        reason: document.getElementById('reason').value.trim(),
+        punishment: document.getElementById('punishment').value.trim() || null,
+        moderator: document.getElementById('moderator').value.trim() || null,
+        link: document.getElementById('link').value.trim() || null,
+      };
+
+      const imageFile = document.getElementById('image').files[0];
+      const videoFile = document.getElementById('video').files[0];
 
       try {
-        const res = await fetch(API_BASE + '/submit-report', {
-          method: 'POST',
-          body: formData
-        });
-        if (!res.ok) throw new Error(await res.text());
+        let image_url = '', video_url = '';
+
+        if (imageFile) {
+          const path = `images/${Date.now()}_${imageFile.name.replace(/\s+/g, '_')}`;
+          const { error: upErr } = await sb.storage.from('report-media').upload(path, imageFile);
+          if (upErr) throw upErr;
+          const { data } = sb.storage.from('report-media').getPublicUrl(path);
+          image_url = data.publicUrl;
+        }
+
+        if (videoFile) {
+          const path = `videos/${Date.now()}_${videoFile.name.replace(/\s+/g, '_')}`;
+          const { error: upErr } = await sb.storage.from('report-media').upload(path, videoFile);
+          if (upErr) throw upErr;
+          const { data } = sb.storage.from('report-media').getPublicUrl(path);
+          video_url = data.publicUrl;
+        }
+
+        const { error } = await sb.from('reports').insert({ ...formData, image_url, video_url });
+        if (error) throw error;
 
         status.style.color = '#2ea043';
         status.textContent = 'Submitted successfully!';
         document.getElementById('reportForm').reset();
+
         setTimeout(() => status.textContent = '', 4000);
       } catch (err) {
         status.style.color = '#f85149';
-        status.textContent = 'Failed: ' + err.message;
+        status.textContent = 'Failed: ' + (err.message || 'Unknown');
+        console.error(err);
       }
     });
-
-    async function addDiscordId() {
-      const input = document.getElementById('newDiscordId');
-      const discordId = input.value.trim();
-
-      if (!discordId) {
-        alert('Enter a valid Discord ID');
-        return;
-      }
-
-      try {
-        const res = await fetch(API_BASE + '/add-id', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ discordId })
-        });
-        if (!res.ok) throw new Error(await res.text());
-
-        input.value = '';
-        loadAllowedIds();
-        alert('Discord ID added!');
-      } catch (err) {
-        alert('Failed: ' + err.message);
-      }
-    }
-
-    async function loadAllowedIds() {
-      const list = document.getElementById('allowed-list');
-      list.innerHTML = 'Loading...';
-
-      try {
-        const res = await fetch(API_BASE + '/get-ids');
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-
-        list.innerHTML = '';
-        if (data.length === 0) {
-          list.innerHTML = '<p style="color:#8b949e;">No IDs added yet.</p>';
-          return;
-        }
-
-        data.forEach(item => {
-          const div = document.createElement('div');
-          div.className = 'id-item';
-          div.innerHTML = `
-            <span>${item.discord_id}</span>
-            <button onclick="deleteDiscordId('${item.id}')" style="background:#da3633; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px;">Remove</button>
-          `;
-          list.appendChild(div);
-        });
-      } catch (err) {
-        list.innerHTML = 'Error loading list';
-      }
-    }
-
-    async function deleteDiscordId(id) {
-      if (!confirm('Remove this Discord ID?')) return;
-      try {
-        const res = await fetch(API_BASE + '/delete-id', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id })
-        });
-        if (!res.ok) throw new Error(await res.text());
-        loadAllowedIds();
-      } catch (err) {
-        alert('Delete failed');
-      }
-    }
-
-    function showTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-      document.querySelector(`nav a[href="#${tabId}"]`)?.classList.add('active');
-      if (tabId === 'view') loadReports();
-    }
   </script>
 </body>
-</html>
+</html> 
