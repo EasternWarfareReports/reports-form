@@ -76,25 +76,18 @@
         <form id="reportForm">
           <label>Reported User Name</label>
           <input id="reported_user" placeholder="Username or ID" required>
-
           <label>Reason for Report</label>
           <textarea id="reason" placeholder="Describe the incident in detail..." required></textarea>
-
           <label>Proposed Punishment</label>
           <input id="punishment" placeholder="e.g. Warning / 3-day mute / Permanent ban">
-
           <label>Moderator Who Took Action</label>
           <input id="moderator" placeholder="Your username / Moderator name" required>
-
           <label>Additional Link (proof, screenshot, clip...)</label>
           <input id="link" placeholder="https://" type="url">
-
           <label>Image Proof (optional)</label>
           <input type="file" id="image" accept="image/*">
-
           <label>Video Proof (optional)</label>
           <input type="file" id="video" accept="video/*">
-
           <button type="submit">Submit Report</button>
         </form>
         <div id="status"></div>
@@ -124,6 +117,7 @@
 
     let allReports = [];
 
+    // Listen for auth changes
     sb.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         location.reload();
@@ -132,6 +126,7 @@
       }
     });
 
+    // Authorization check – allows access if Discord ID is in allowed_discord_ids OR if UUID is admin
     async function checkAuthorization(session) {
       if (!session) {
         document.getElementById('login-screen').style.display = 'flex';
@@ -141,16 +136,30 @@
       }
 
       const userId = session.user.id;
-      const discordId = session.user.user_metadata?.sub;
+      let discordId = session.user.user_metadata?.sub || session.user.user_metadata?.provider_id;
+
+      // Force string (Discord IDs are strings)
+      discordId = discordId ? String(discordId) : null;
+
+      console.log('User UUID:', userId);
+      console.log('Discord ID from session:', discordId);
 
       const isAdmin = ALLOWED_ADMIN_UUIDS.includes(userId);
 
-      const { data: allowed } = await sb
+      // Check allowed_discord_ids table
+      const { data: allowed, error } = await sb
         .from('allowed_discord_ids')
         .select('discord_id')
         .eq('discord_id', discordId);
 
-      const isAllowed = allowed && allowed.length > 0;
+      if (error) {
+        console.error('Discord ID check error:', error);
+      }
+
+      const isAllowed = !error && allowed && allowed.length > 0;
+
+      console.log('Is allowed by Discord ID?', isAllowed);
+      console.log('Allowed rows found:', allowed);
 
       if (!isAllowed && !isAdmin) {
         document.getElementById('login-screen').style.display = 'none';
@@ -169,6 +178,7 @@
       }
     }
 
+    // Initial check on load
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
       checkAuthorization(session);
@@ -277,7 +287,6 @@
       }
     }
 
-    // Submit Report function - fully restored
     document.getElementById('reportForm')?.addEventListener('submit', async e => {
       e.preventDefault();
       const status = document.getElementById('status');
