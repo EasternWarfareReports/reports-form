@@ -174,7 +174,7 @@
       cursor: pointer;
       z-index: 10000;
     }
-    /* Side admin panel – only visible to admin UUIDs */
+    /* Side admin panel – only visible to admins */
     #admin-panel {
       position: fixed;
       top: 80px;
@@ -243,14 +243,14 @@
   <div id="denied-screen" style="display:none;">
     <h2>Access Denied</h2>
     <p>Your Discord account is not authorized.</p>
-    <button onclick="sb.auth.signOut().then(() => location.reload())">Logout & Try Again</button>
+    <button onclick="logout()">Logout & Try Again</button>
   </div>
 
   <!-- Main content -->
   <div id="main-content" style="display:none;">
-    <button id="logout-btn" onclick="sb.auth.signOut().then(() => location.reload())">Logout</button>
+    <button id="logout-btn" onclick="logout()">Logout</button>
 
-    <!-- Side admin panel – only visible to allowed admins -->
+    <!-- Side admin panel – only visible to admins -->
     <div id="admin-panel">
       <h3>Manage Allowed Discord IDs</h3>
       <input type="text" id="newDiscordId" placeholder="Discord ID (e.g. 1163584865170632816)">
@@ -307,16 +307,14 @@
     const { createClient } = window.supabase;
     const sb = createClient(supabaseUrl, supabaseKey);
 
-    // === Supabase UUIDs that can access the panel (admin) ===
     const ALLOWED_ADMIN_UUIDS = [
-      '43940f16-1cf6-4790-80fd-711c563362a2',          // Your main UID
-      'c6d1bc4f-9824-4fa8-a1a6-83adb524b457',          // Additional user 1
-      '448d355f-ff7f-4ffd-be5f-096c1fcd2c26'           // Additional user 2
+      '43940f16-1cf6-4790-80fd-711c563362a2', 
+      'c6d1bc4f-9824-4fa8-a1a6-83adb524b457',
+      '448d355f-ff7f-4ffd-be5f-096c1fcd2c26'
     ];
 
     let allReports = [];
 
-    // Listen for auth state changes to fix logout/login loop
     sb.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         location.reload();
@@ -325,7 +323,6 @@
       }
     });
 
-    // Check authorization on load and after login
     async function checkAuthorization(session) {
       if (!session) {
         document.getElementById('login-screen').style.display = 'flex';
@@ -337,10 +334,8 @@
       const userId = session.user.id;
       const discordId = session.user.user_metadata?.sub;
 
-      // Check if user is admin (can see panel)
       const isAdmin = ALLOWED_ADMIN_UUIDS.includes(userId);
 
-      // Check if Discord ID is in allowed list
       const { data: allowed, error } = await sb
         .from('allowed_discord_ids')
         .select('discord_id')
@@ -355,19 +350,16 @@
         return;
       }
 
-      // Allowed → show main content
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('denied-screen').style.display = 'none';
       document.getElementById('main-content').style.display = 'block';
 
-      // Show admin panel only to admins
       if (isAdmin) {
         document.getElementById('admin-panel').style.display = 'block';
         loadAllowedIds();
       }
     }
 
-    // Initial check on load
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
       checkAuthorization(session);
@@ -379,6 +371,11 @@
         options: { redirectTo: window.location.href }
       });
       if (error) alert('Login error: ' + error.message);
+    }
+
+    async function logout() {
+      await sb.auth.signOut();
+      location.reload();
     }
 
     function showTab(tabId) {
