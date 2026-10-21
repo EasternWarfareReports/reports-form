@@ -10,7 +10,8 @@ Read these first, for the decisions:
 
 - Zombies are simulated by **EnemyLib**, a vendored library, as pure data on the server. There are no Parts, no Humanoids and no physics.
 - Each client draws them with its own procedural, IK-driven animation, sent as binary keyframes and dead-reckoned between them.
-- Our code adds five things around it:
+- Our code adds six things around it:
+  - bodies that look like zombified Roblox R15 avatars, built from real R15 meshes
   - sword combat in both directions: your hits on zombies and their blows on you
   - an AI **director** that plans whole packs:
     - attack turns
@@ -27,8 +28,10 @@ Read these first, for the decisions:
 
 | Place | What |
 |---|---|
-| `ReplicatedStorage.Vendor.EnemyLib` | The library, quarantined. Our only edits are marked `PATCH n` and listed in `Vendor.PATCHES` (6 patches). |
-| `ReplicatedStorage.Horde.Types` | One module per zombie type (Zombie, Brute, Stalker). Each holds EnemyLib stats, plus the body Model, plus our `Data`: Hits, Zones, Guard, and `Ai`, the director traits. |
+| `ReplicatedStorage.Vendor.EnemyLib` | The library, quarantined. Our only edits are marked `PATCH n` and listed in `Vendor.PATCHES` (7 patches). |
+| `ReplicatedStorage.Horde.Types` | One module per zombie type (Zombie, Brute, Stalker). Each holds EnemyLib stats (with its `RigOptions`: outfit palettes and `Anim` tuning), plus the body Model, plus our `Data`: Hits, Zones, Guard, and `Ai`, the director traits. |
+| `ServerStorage.Tools` | Authoring tools, Studio only: `AvatarZombies` builds each type's body Model from R15 meshes; `AvatarZombieLooks` holds each type's scale and details (see "Zombie bodies"). |
+| `ServerStorage.Archive.BlockyZombieModels` | The first, hand-built blocky bodies, kept in case they are wanted back. |
 | `ReplicatedStorage.Horde` | Shared pieces: `HordeConfig` (all tuning, the director's included), `Jobs` (director job names, labels and sets), and the pure rules `ZoneBands`, `GuardRules` and `CleaveRules`. |
 | `ReplicatedStorage.Horde.Client` | Client side: `HordeView` (the only client module that touches EnemyLib), `JobFeed`, `ZombieCues`, `JobCues`, `ZombieSounds`, `ThreatMarkers`, `ZombiePush`, `HordePanel`, `AiLabels`. |
 | `StarterPlayerScripts.HordeClient` | Client assembly: starts the renderer and builds the presentation. |
@@ -288,6 +291,116 @@ When a Stalker lands a leap:
   - Attacking labels are red, lurking ones grey.
   - The boards sit directly in PlayerGui with `ResetOnSpawn = false`, so they survive respawns.
 
+## Zombie bodies
+
+The zombies look like real Roblox R15 avatars, zombified. The method is unchanged: EnemyLib still draws each type's Model with its own procedural rig. Only the Model's parts changed.
+
+### How a body is built (`ServerStorage.Tools.AvatarZombies`)
+
+The builder (158 lines) makes a Model from the real blocky R15 MeshParts of `StarterPlayer.StarterCharacter`, so the zombies share your character's body shapes.
+
+- **Bones.** Each R15 part becomes one of EnemyLib's 12 named bones:
+
+  | R15 part | EnemyLib bone |
+  |---|---|
+  | UpperTorso | Torso |
+  | Head | Head |
+  | Left/RightUpperLeg | ThighL/R |
+  | Left/RightLowerLeg | ShinL/R |
+  | Left/RightFoot | FootL/R |
+  | Left/RightUpperArm | UpperL/R |
+  | Left/RightLowerArm | ForeL/R |
+
+- **Extras.** LowerTorso and the two hands have no bone of their own. They ride Torso, ForeL and ForeR through a `Bone` attribute, and are marked `LOD = Full` so the hips and hands stay at medium range.
+- **Where limbs bend.** Each limb's `Proximal`/`Distal` attachments sit on the avatar's own Motor6D joints (hip, knee, ankle, elbow, wrist). Shoulders sit on the arm's axis at the joint's height, so the arm hangs straight from its pivot.
+- **Colour roles.** Every part gets a `Role`, and each zombie's palette colours the roles:
+
+  | Role | Parts |
+  |---|---|
+  | Skin | head, hands |
+  | Shirt | upper torso |
+  | Sleeve | upper arms |
+  | Cuff | forearms (in skin colour it makes a T-shirt) |
+  | Pants | lower torso, legs |
+  | Shoes | feet |
+
+- **Scale.** Like the avatar body sliders, the body scales by width, height and depth, and the head by its own factor, hung from the scaled neck. Heights match the hitboxes exactly.
+
+  | Type | Width, height, depth | Head | Height |
+  |---|---|---|---|
+  | Zombie | 1, 1.012, 1 | 1 | 5.51 |
+  | Brute | 1.5, 1.585, 1.35 | 1.2 | 8.20 |
+  | Stalker | 0.82, 1.249, 0.85 | 0.98 | 6.50 |
+
+### What goes on top (`ServerStorage.Tools.AvatarZombieLooks`)
+
+Pure data (89 lines). Offsets are on the unscaled avatar, relative to the centre of the R15 part each detail sits on; `Pair` mirrors a detail to the other side.
+
+- **Face.** The head's own face texture is cleared, and a classic Roblox face is built from parts, each placed flat on the head's curve (radius 0.58):
+  - **Glowing eyes:** Neon ovals named `EyeL`/`EyeR` (`LOD = Full`). `ZombieCues` recolours them for the cues. At rest they glow in the type's colour: Zombie yellow, Brute orange, Stalker deep blue (pale blue vanished on its pale skin).
+  - dark sockets behind the eyes
+  - an open, slightly tilted mouth with a strip of teeth
+- **Rags** (Zombie and Stalker): a ragged shirt tear made of two skewed pieces, hem tatters front and back, a knee rip, a cheek and an arm rot patch. Rot is darker skin. The Zombie also has frayed sleeve ends; the Stalker has none, because on bare arms they would read as rings.
+- **Brute armour:** pauldrons with rims, a chest plate, a leather strap, a belt and buckle, bracers, knee guards and a helm. It uses `CorrodedMetal`, because plain `Metal` mirrors the night sky and reads black.
+- **Outfits** (each type's `RigOptions.Palettes`):
+  - Zombie, 6: grey tee and jeans, red long sleeves, the classic blue and green, a dark hoodie, an office shirt, a green tee and khakis
+  - Brute, 2: a leather vest over bare arms
+  - Stalker, 3: tank tops, bare arms and bare feet
+- **Hit zones**, measured on the built bodies with `AvatarZombies.Zones` and written into each type's `Data.Zones`:
+
+  | Type | HeadFrom | LegTo |
+  |---|---|---|
+  | Zombie | 0.785 | 0.403 |
+  | Brute | 0.827 | 0.424 |
+  | Stalker | 0.822 | 0.421 |
+
+### Rebuild a body
+
+From the Studio command bar, in Edit mode:
+
+1. Clone both tool modules into a temporary folder and require the clones. Edit mode caches `require`, so a fresh copy always runs the current code.
+2. `local model = AvatarZombies.Build(game.StarterPlayer.StarterCharacter, AvatarZombieLooks[typeName])`
+3. Paint every part that has a `Role` with the type's first palette. EnemyLib's far-away impostor takes its colours from the Model itself.
+4. Check `ModelRig.validate(model, "Biped")` reports no errors.
+5. Parent the model under the type module, in place of its old Model.
+6. If the proportions changed, copy `AvatarZombies.Zones(model)` into the type's `Data.Zones`.
+
+## Legs keep up with the body
+
+### The problem
+
+At a run, zombies' feet trailed behind their hips, and their chests and heads were far ahead of their legs. Measured live at 12 studs/s, both feet averaged **0.84–1.03 studs behind the hips**.
+
+### The causes
+
+Three, found by measuring live and then running EnemyLib's real `Gait` code offline:
+
+1. **A strong limp.** EnemyLib multiplies each type's `Anim.Limp` by `LimpScale` 2.5. At the Zombie's old `Limp = 1`, the limping leg stepped only about 12% as far as it should and was dragged behind.
+2. **Steps sized from the wrong speed.** The gait sizes each step from the speed in the server's keyframes. Crowd pushes and corrections move the body faster than that: sent 11.0 studs/s, really travelled 12.1.
+3. **Steps planned a frame late.** The renderer planned each step from the previous frame's hips, 0.2 studs behind at a run.
+
+Also, EnemyLib multiplies the run lean by `AnimScale` 1.5, so the Zombie leaned 12° + 16° × 1.5 = **36°** at a run. That put its head about a stud ahead of its hips.
+
+With the limp already toned down, the offline simulation of causes 2 and 3 gave −0.52, matching play's −0.53 exactly. With the true speed and this frame's hips it gave −0.10.
+
+### The fix
+
+- **Tuning** (each type's `RigOptions.Anim`; the TRADE-OFF note is in the Zombie type module):
+
+  | Type | Lean | LeanRun | Limp | Lean at a run |
+  |---|---|---|---|---|
+  | Zombie | 12 → 6 | 16 → 8 | 1 → 0.25 | 36° → 18° |
+  | Brute | 8 → 6 | 10 → 6 | 0.3 → 0.15 | 23° → 15° |
+  | Stalker | 18 → 10 | 20 → 12 | 0.2 (kept) | 48° → 28° |
+
+  Keep `Anim.Limp` at 0.3 or less, because `LimpScale` 2.5 multiplies it.
+- **Patch 7** (`Client/Classes/EnemyView` and `Client/Types`): the gait sizes steps from the larger of the keyframe speed and the body's measured travel speed (smoothed; a jump of 4+ studs is not counted), and plans them from this frame's hips.
+
+### Verified
+
+- Live, after the fix, at 12.2 studs/s: the feet midpoint is **0.25 studs behind the hips**, and the front foot lands **0.34 studs ahead** of them. The frame rate held 60 fps.
+- The limp and the hunch are still visible, just smaller.
+
 ## Key numbers (measured)
 
 At 150 alive:
@@ -302,6 +415,8 @@ At 150 alive:
 | Frame rate | 60 fps, worst frame 18.6 ms with the director (18.9 ms before it) |
 | Nav bake | 2.1 s at start |
 
+These were measured with the earlier blocky bodies. The avatar bodies draw a few more parts at medium range: 17 for a Zombie or Stalker (the 12 bones plus hips, hands and eyes) and 21 for a Brute (plus pauldrons, chest plate and helm), against 15 for the old blocky Zombie. With 16 avatar zombies running, the client held 60 fps (worst frame 22.5 ms). They have **not** been re-measured at 150.
+
 Director tuning, all in `HordeConfig.Director` and each type's `Data.Ai`:
 
 | Type | Run speed | Acceleration | Turn cost | Reach | Recover | Trait |
@@ -314,12 +429,14 @@ Zombies now run faster than you walk (10.8) and slower than you sprint (21.6).
 
 ## Rebuild it from scratch
 
-1. **Vendor.** Insert EnemyLib under `ReplicatedStorage.Vendor` and apply the 6 patches in `Vendor.PATCHES`.
+1. **Vendor.** Insert EnemyLib under `ReplicatedStorage.Vendor` and apply the 7 patches in `Vendor.PATCHES`.
 2. **Types.** Write each type module: EnemyLib fields, plus `Data = { Hits, Zones = { HeadFrom, LegTo }, Guard = { Melee = rule, Leap = rule, Charge = rule }, Ai = { TurnCost, Reach, Recover, Lunge?, Charge?, Skirmish? } }`, plus a child Model.
-   - The Model needs the 12 named bones: Torso, Head, ThighL/R, ShinL/R, FootL/R, UpperL/R, ForeL/R.
-   - Add `Proximal`/`Distal` attachments on the limbs.
-   - Feet at height 0, facing −Z.
+   - Build the Model with `ServerStorage.Tools.AvatarZombies` (see "Zombie bodies"). By hand, it needs:
+     - the 12 named bones: Torso, Head, ThighL/R, ShinL/R, FootL/R, UpperL/R, ForeL/R
+     - `Proximal`/`Distal` attachments on the limbs
+     - feet at height 0, facing −Z
    - Check it with `ModelRig.validate`.
+   - Keep `RigOptions.Anim.Limp` at 0.3 or less (see "Legs keep up with the body").
 3. **Server adapter.**
    - One adapter starts `Server.Start` with `{ Nav, EnemyFolders = { Types }, Population = 0, Hooks = { CanTarget = alive, HitPlayer = yourReferee } }`.
    - It returns spawned ids, and exposes `AttackStarted` and removal as id signals.
@@ -346,6 +463,7 @@ Zombies now run faster than you walk (10.8) and slower than you sprint (21.6).
 - **`Vendor/PATCHES`:** a short owned patch log instead of an untouched vendor, or a full fork. Working around an open debug remote and a closed brain from outside would spread hacks through our code.
 - **`HordeAssembly`:** each type is named in a table, so its `Data` stays typed. A new type must be added there too; start-up fails loudly if one is missing.
 - **`EnemyTarget.HitDamage`:** zombies die in a set number of hits, a fraction of their max health, instead of the PvP damage roll. Counting hits reads clearly in a horde. Heads still count 1.4×.
+- **`Types/Zombie` `RigOptions.Anim`:** EnemyLib multiplies `Limp` by 2.5 and the run lean by 1.5. At `Limp = 1` the limping leg barely stepped and dragged 1–2 studs behind the hips at run speed. 0.25 keeps a visible limp with both feet under the body, and the lean stays 18°.
 - **`TurnBudget.Plan`:** turns are handed out as a queue. When the next in line costs more than what is left (a Brute), nobody behind it skips ahead. A point can sit unused for a moment, but otherwise a big crowd would starve the Brute forever.
 - **Not written as `TRADE-OFF` comments, but worth knowing:**
   - `HitShapes` gives zombies a cylinder 1.2 studs wider for validation, because clients draw zombies a little ahead of the server. EnemyLib keeps no position history to rewind to.
